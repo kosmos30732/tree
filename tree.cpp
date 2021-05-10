@@ -334,14 +334,11 @@ public:
         }        
     }
     
-    //true - успешно удалена
-    //false - узел не найден
-    bool DeleteNode(int key)
+    void DeleteNode(int key)
     {
         if (!root)
         {
-            cout << "Empty tree" << endl;
-            return false;
+            return;
         }
 
         Node* _key = nullptr, * pred_last = nullptr, * last = nullptr;
@@ -374,17 +371,18 @@ public:
             spisok.erase(spisok.begin(), spisok.begin() + 1);
         }
 
+        //не найден элемент
         if (!_key)
         {
-            cout << "Can't find Node with key: " << key << endl;
-            return false;
+            return;
         }
 
-        if (_key == last)
+        //один элемент в дереве
+        if (_key == last && last == root)
         {
             delete root;
             root = nullptr;
-            return true;
+            return;
         }
 
         if (_key && pred_last && last)
@@ -400,10 +398,7 @@ public:
             }
             delete last;            
         }
-
-        return true;
     }
-
 };
 
 class FTree
@@ -418,16 +413,19 @@ public:
     //из n случайных чисел
     FTree(int n)
     {
-        if (n==0)
+        if (n == 0)
         {
             root = nullptr;
         }
         else
         {
             root = new Node(rand() % 100);
-            for (int i = 1; i < n; i++)
+            for (int i = 1; i < n;)
             {
-                Add(root, rand() % 100);
+                if (Add(root, rand() % 100))
+                {
+                    i++;
+                }
             }
         }
     }
@@ -435,14 +433,206 @@ public:
     //построение по заданому массиву чисел
     FTree(int* a, int n)
     {
-
+        if (n == 0)
+        {
+            root = nullptr;
+        }
+        else
+        {
+            root = new Node(a[0]);
+            for (int i = 1; i < n; i++)
+            {
+                Add(root, a[i]);
+            }
+        }
     }
-    //копирование
-
-    //добавление 
-    void Add(Node* root, int k)
+    
+    FTree(const FTree& other)
     {
+        if (other.root == nullptr)
+        {
+            root = nullptr;
+        }
+        else
+        {
+            root = new Node(other.root->key);
+            root->left = CopyTree(other.root->left);
+            root->right = CopyTree(other.root->right);
+        }
+    }
+    Node* CopyTree(Node* other)
+    {
+        if (other == nullptr)
+        {
+            return nullptr;
+        }
 
+        Node* root = new Node(other->key);
+        root->left = CopyTree(other->left);
+        root->right = CopyTree(other->right);
+
+        return root;
+    }
+
+    FTree& operator=(const FTree& other)
+    {
+        if (this->root == other.root)
+        {
+            return *this;
+        }
+
+        if (!root)
+        {
+            delete_FTree(root);
+        }
+
+        if (other.root == nullptr)
+        {
+            root = nullptr;
+        }
+        else
+        {
+            root = new Node(other.root->key);
+            root->left = CopyTree(other.root->left);
+            root->right = CopyTree(other.root->right);
+        }
+
+        return *this;
+    }
+
+    ~FTree()
+    {
+        delete_FTree(root);
+        root = nullptr;
+    }
+    void delete_FTree(Node* root)
+    {
+        if (root)
+        {
+            delete_FTree(root->left);
+            delete_FTree(root->right);
+            delete root;
+        }
+    }
+
+    bool Add(Node* root, int key)
+    {
+        Node* cur = root;
+        while (cur && cur->key != key)
+        {
+            if (cur->key > key && !cur->left)
+            {
+                cur->left = new Node(key);
+                return true;
+            }
+
+            if (cur->key < key && !cur->right)
+            {
+                cur->right = new Node(key);
+                return true;
+            }
+
+            if (cur->key > key)
+            {
+                cur = cur->left;
+            }
+            else
+            {
+                cur = cur->right;
+            }
+        }
+
+        return false;
+    }
+
+    void PrintTree(Node* root, int k)
+    {
+        if (root == nullptr)
+        {
+            return;
+        }
+        PrintTree(root->right, k + 3);
+        for (int i = 0; i < k; i++)
+        {
+            cout << " ";
+        }
+        cout.width(2);
+        cout << root->key << endl;
+        PrintTree(root->left, k + 3);
+    }
+    
+    Node* GetRoot()
+    {
+        return root;
+    }
+
+    void DeleteNode(int key)
+    {
+        Node* cur = root;
+        Node* pred = nullptr;
+
+        //ищем удаляемый элемент и его предка
+        while (cur && cur->key != key)
+        {
+            pred = cur;
+            if (cur->key>key)
+            {
+                cur = cur->left;
+            }
+            else
+            {
+                cur = cur->right;
+            }
+        }
+
+        //не найден удаляемый элемент
+        if (!cur)
+        {
+            return;
+        }
+
+        //если нет потомка слева у удаляемого элмента то подвешиваем
+        //предку провое его поддерево
+        if (!cur->left)
+        {
+            if (pred && pred->left == cur)
+            {
+                pred->left = cur->right;
+            }
+            if (pred && pred->right == cur)
+            {
+                pred->right = cur->right;
+            }
+            delete cur;
+            return;
+        }
+
+        //если нет потомка справа у удаляемого элмента то подвешиваем
+        //предку левое его поддерево
+        if (!cur->right)
+        {
+            if (pred && pred->left == cur)
+            {
+                pred->left = cur->left;
+            }
+            if (pred && pred->right == cur)
+            {
+                pred->right = cur->left;
+            }
+            delete cur;
+            return;
+        }
+
+        //есть два поддерева, на место элемента вешаем
+        //наименьший из его правого поддерева
+        Node* min_right = cur->right;
+        while (min_right->left)
+        {
+            min_right = min_right->left;
+        }
+        int temp_key = min_right->key;
+        DeleteNode(temp_key);
+        cur->key = temp_key;
     }
 };
 
@@ -459,37 +649,45 @@ void PrintNode(Node* root)
 int main()
 {
     srand(unsigned int(time(NULL)));
-    BinTree tree(6);
+    //BinTree tree(6);
 
-    tree.PrintTree(tree.GetRoot(), 0);
+    //tree.PrintTree(tree.GetRoot(), 0);
 
-    tree.WidthTraversal();
-    
-    Node* s = tree.FindNode(7);
+    //tree.WidthTraversal();
+    //
+    //Node* s = tree.FindNode(7);
 
-    PrintNode(s);
-    cout << "-----------------------" << endl;
+    //PrintNode(s);
+    //cout << "-----------------------" << endl;
 
-    BinTree tree2;
+    //BinTree tree2;
+    ////tree2.PrintTree(tree2.GetRoot(), 0);
+    ////cout << "-----------------------" << endl;
+
+    //tree2.AddNode(25);
+    //tree2.AddNode(26);
+    //tree2.AddNode(27);
+    //tree2.AddNode(28);
+    //tree2.AddNode(29);
+    //tree2.AddNode(30);
+    //tree2.AddNode(24);
+    //tree2.AddNode(23);
+    //tree2.AddNode(22);
     //tree2.PrintTree(tree2.GetRoot(), 0);
     //cout << "-----------------------" << endl;
 
-    tree2.AddNode(25);
-    tree2.AddNode(26);
-    tree2.AddNode(27);
-    tree2.AddNode(28);
-    tree2.AddNode(29);
-    tree2.AddNode(30);
-    tree2.AddNode(24);
-    tree2.AddNode(23);
-    tree2.AddNode(22);
-    tree2.PrintTree(tree2.GetRoot(), 0);
-    cout << "-----------------------" << endl;
+    //
+    //tree2.DeleteNode(22);
+    //tree2.PrintTree(tree2.GetRoot(), 0);
+    //cout << "-----------------------" << endl;
 
+    FTree t(10);
+    t.PrintTree(t.GetRoot(), 0);
+    cout << "------------------------" << endl;
     
-    tree2.DeleteNode(30);
-    tree2.PrintTree(tree2.GetRoot(), 0);
-    cout << "-----------------------" << endl;
+    t.DeleteNode(34);
+    t.PrintTree(t.GetRoot(), 0);
+    cout << "------------------------" << endl;
 
     return 0;
 }
