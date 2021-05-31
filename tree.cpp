@@ -9,17 +9,18 @@ class Node
 {
     int key;
     Node* left, * right;
+    char height;
 public:
-    Node(int _key = 0, Node* _left = nullptr, Node* _rigth = nullptr)
+    Node(int _key = 0, Node* _left = nullptr, Node* _rigth = nullptr, char _height = 1)
     {
         key = _key;
         left = _left;
         right = _rigth;
+        height = _height;
     }
 
-    friend class BinTree;
     friend class FTree;
-    friend void PrintNode(Node*);
+    friend class BFTree;
 };
 
 class FTree
@@ -97,7 +98,7 @@ public:
 
     FTree& operator=(const FTree& other)
     {
-        if (this->root == other.root)
+        if (this == &other)
         {
             return *this;
         }
@@ -138,6 +139,12 @@ public:
 
     bool Add(Node* root, int key)
     {
+        if (root==nullptr)
+        {
+            root = new Node(key);
+            return true;
+        }
+
         Node* cur = root;
         while (cur && cur->key != key)
         {
@@ -271,31 +278,14 @@ public:
             cout << "Tree empty" << endl;
             return -1;
         }
-        return min_r(root);
-    }
 
-    int min_r(Node* root)
-    {
-        int m, m_temp;
-        m = root->key;
-        if (root->left)
+        Node* cur = root;
+        while (cur->left)
         {
-            m_temp = min_r(root->left);
-            if (m_temp < m)
-            {
-                m = m_temp;
-            }
-        }
-        if (root->right)
-        {
-            m_temp = min_r(root->right);
-            if (m_temp < m)
-            {
-                m = m_temp;
-            }
+            cur = cur->left;
         }
 
-        return m;
+        return cur->key;
     }
 
     //return max key of tree
@@ -306,31 +296,14 @@ public:
             cout << "Tree empty" << endl;
             return -1;
         }
-        return max_r(root);
-    }
 
-    int max_r(Node* root)
-    {
-        int mx, mx_temp;
-        mx = root->key;
-        if (root->left)
+        Node* cur = root;
+        while (cur->right)
         {
-            mx_temp = max_r(root->left);
-            if (mx_temp > mx)
-            {
-                mx = mx_temp;
-            }
-        }
-        if (root->right)
-        {
-            mx_temp = max_r(root->right);
-            if (mx_temp > mx)
-            {
-                mx = mx_temp;
-            }
+            cur = cur->right;
         }
 
-        return mx;
+        return cur->key;
     }
 
     void WidthTraversal()
@@ -391,47 +364,150 @@ public:
         }
         return cur;
     }
+
+    friend class BFTree;
 };
 
-void PrintNode(Node* root)
+class BFTree: public FTree
 {
-    if (!root)
+    //вычисление коэфициента сбалансированности
+    char height(Node* root)
     {
-        cout << "Empty Node" << endl;
-        return;
+        if (root)
+        {
+            return root->height;
+        }
+        else
+        {
+            return 0;
+        }
     }
-    cout << root->key << endl;
-}
+
+    //вычисление коэфициента сбалансированности
+    int BalanceFactor(Node* root)
+    {
+        return height(root->right) - height(root->left);
+    }
+
+    //коректировка height в процессе балансировки
+    void CorHeight(Node* root)
+    {
+        char h_left = height(root->left);
+        char h_rigth = height(root->right);
+        root->height = (h_left > h_rigth ? h_left : h_rigth) + 1;
+    }
+
+    //малое правое вращение
+    Node* R_Rotation(Node* root)
+    {
+        Node* other = root->left;
+        root->left = other->right;
+        other->right = root;
+        CorHeight(root);
+        CorHeight(other);
+        return other;
+    }
+
+    //малое левое вращение
+    Node* L_Rotation(Node* root)
+    {
+        Node* other = root->right;
+        root->right = other->left;
+        other->left = root;
+        CorHeight(root);
+        CorHeight(other);
+        return other;
+    }
+
+    //балансировка узла путем вращения его поддеревьев
+    Node* BalanceNode(Node* root)
+    {
+        CorHeight(root);
+        if (BalanceFactor(root)==2)
+        {
+            //в правом поддереве его левое поддерево длиннее правого поддерева
+            if (BalanceFactor(root->right)<0)
+            {
+                root->right = R_Rotation(root->right);
+            }
+            return L_Rotation(root);
+        }
+
+        if (BalanceFactor(root) == -2)
+        {
+            //в левом поддереве его правое поддерево длиннее левого поддерева
+            if (BalanceFactor(root->left)>0)
+            {
+                root->left = L_Rotation(root->left);
+            }
+            return R_Rotation(root);
+        }
+
+        return root;
+    }
+
+    Node* Add_Node(Node* root, int key)
+    {
+        if (!root)
+        {
+            return new Node(key);
+        }
+
+        if (key<root->key)
+        {
+            root->left = Add_Node(root->left, key);
+        }
+        else
+        {
+            root->right = Add_Node(root->right, key);
+        }
+        
+        return BalanceNode(root);
+    }
+
+public:
+    void input_BFTree()
+    {
+        int n;
+        cout << "How many keys in tree?" << endl;
+        cin >> n;
+        cout << "Enter keys: ";
+        for (int i = 0; i < n; i++)
+        {
+            int key;
+            cin >> key;
+            root = Add_Node(root, key);
+        }
+    }
+
+    void AddBFTree(int key)
+    {
+        root = Add_Node(root, key);
+    }
+};
 
 int main()
 {
     srand(unsigned int(time(NULL)));
+    BFTree t;
 
-    int n;
-    cin >> n;
-    int* arr;
-    arr = new int[n];
+    t.input_BFTree();
+    cout << "-------------------------" << endl;
+    t.PrintTree(t.GetRoot(), 0);
+
+    int n = 5;
+
     for (int i = 0; i < n; i++)
     {
-        cin >> arr[i];
+        int key;
+        cin >> key;
+        t.AddBFTree(key);
+        cout << "-------------------------" << endl;
+        t.PrintTree(t.GetRoot(), 0);
     }
 
-    FTree t(arr, n);
+    cout << "-------------------------" << endl;
     t.PrintTree(t.GetRoot(), 0);
-    cout << "------------------------" << endl;
-    
-    //t.DeleteNode(85);
-    //t.PrintTree(t.GetRoot(), 0);
-    //cout << "------------------------" << endl;
-
-    t.AddNode(34);
-    t.PrintTree(t.GetRoot(), 0);
-    cout << "------------------------" << endl;
-
-    t.WidthTraversal();
-
-    cout << t.min_key() << endl;
-    cout << t.max_key() << endl;
 
     return 0;
 }
